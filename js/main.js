@@ -118,8 +118,26 @@ d3.json("forest.json?" + new Date().getTime()).then(async function(data) {
     filterAndDisplayData(); 
 
     updateOrphanedReportDisplay();
-    const allEmployeesForPods = getUniqueEmployees();
-    renderPartnerPods(allEmployeesForPods, currentGlobalPartnerTrees);
+    const allEmployees = getUniqueEmployees();
+    renderPartnerPods(allEmployees, currentGlobalPartnerTrees);
+    
+    // --- New "All Employees" Tab Logic ---
+    const locations = new Set(allEmployees.map(e => e['Location  Name']).filter(Boolean));
+    const talentGroups = new Set(allEmployees.map(e => e.talent_group).filter(Boolean));
+    populateFilter("#location-filter", locations, "All Locations");
+    populateFilter("#talent-group-filter", talentGroups, "All Talent Groups");
+    renderAllEmployeesList(allEmployees, currentGlobalPartnerTrees);
+
+    d3.select("#filter-employees-button").on("click", () => {
+        renderAllEmployeesList(getUniqueEmployees(), currentGlobalPartnerTrees);
+    });
+     d3.select("#clear-filters-button").on("click", () => {
+        d3.select("#location-filter").property("value", "all");
+        d3.select("#talent-group-filter").property("value", "all");
+        renderAllEmployeesList(getUniqueEmployees(), currentGlobalPartnerTrees);
+    });
+    // --- End New Logic ---
+
     renderChangeLogTable();
     renderPodChangeLogTable();
 
@@ -127,8 +145,9 @@ d3.json("forest.json?" + new Date().getTime()).then(async function(data) {
         currentSelectedOU = d3.select(this).property("value");
         filterAndDisplayData();
         updateOrphanedReportDisplay();
-        const allEmployeesForPods = getUniqueEmployees();
-        renderPartnerPods(allEmployeesForPods, currentGlobalPartnerTrees);
+        const allEmployees = getUniqueEmployees();
+        renderPartnerPods(allEmployees, currentGlobalPartnerTrees);
+        renderAllEmployeesList(allEmployees, currentGlobalPartnerTrees); // Update on OU change
     });
     
     d3.select("#tree-selector").on("change", function() {

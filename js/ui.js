@@ -564,8 +564,9 @@ function confirmPodMove() {
     renderPodChangeLogTable();
     
     // Re-render the pods view
-    const allEmployeesForPods = getUniqueEmployees();
-    renderPartnerPods(allEmployeesForPods, currentGlobalPartnerTrees);
+    const allEmployees = getUniqueEmployees();
+    renderPartnerPods(allEmployees, currentGlobalPartnerTrees);
+    renderAllEmployeesList(allEmployees, currentGlobalPartnerTrees); // Refresh the "All Employees" list
 
     movePodMemberModal.style.display = "none";
 }
@@ -717,4 +718,105 @@ function downloadCSV(data, filename) {
         link.click();
         document.body.removeChild(link);
     }
+}
+function populateFilter(selectorId, values, defaultOptionText) {
+    const selector = d3.select(selectorId);
+    selector.selectAll("option").remove();
+    selector.append("option").attr("value", "all").text(defaultOptionText);
+    const sortedValues = Array.from(values).sort();
+    sortedValues.forEach(value => {
+        selector.append("option").attr("value", value).text(value);
+    });
+}
+
+function renderAllEmployeesList(allEmployees, allPartners) {
+    const container = d3.select("#all-employees-container");
+    container.selectAll("*").remove();
+
+    if (!currentSelectedOU) {
+        container.html('<p>Please select an Operating Unit to view employees.</p>');
+        return;
+    }
+
+    const locationFilter = d3.select("#location-filter").property("value");
+    const talentGroupFilter = d3.select("#talent-group-filter").property("value");
+
+    let filteredEmployees = allEmployees.filter(emp => emp['Operating Unit Name'] === currentSelectedOU);
+
+    if (locationFilter !== 'all') {
+        filteredEmployees = filteredEmployees.filter(emp => emp['Location  Name'] === locationFilter);
+    }
+    if (talentGroupFilter !== 'all') {
+        filteredEmployees = filteredEmployees.filter(emp => emp.talent_group === talentGroupFilter);
+    }
+
+    const bulkMoveButton = container.append('button')
+        .attr('class', 'bulk-move-button')
+        .text('Bulk Move Selected')
+        .style('display', 'none') // Initially hidden
+        .on('click', function(event) {
+            event.stopPropagation();
+            const selectedEmployees = [];
+            container.selectAll('.employee-checkbox:checked').each(function(d) {
+                selectedEmployees.push(d);
+            });
+            if (selectedEmployees.length > 0) {
+                showMovePodModal(selectedEmployees);
+            } else {
+                alert("Please select at least one employee to move.");
+            }
+        });
+
+    if (filteredEmployees.length === 0) {
+        container.append("p").text("No employees match the current filter criteria.");
+        return;
+    }
+
+    const table = container.append('table').attr('class', 'pod-table'); // Re-use pod-table styles
+    const thead = table.append('thead');
+    const tbody = table.append('tbody');
+
+    const headerRow = thead.append('tr');
+    headerRow.append('th').append('input')
+        .attr('type', 'checkbox')
+        .on('click', function() {
+            const isChecked = d3.select(this).property('checked');
+            container.selectAll('.employee-checkbox').property('checked', isChecked).dispatch('change');
+        });
+
+    headerRow.selectAll('th.col-header')
+        .data(['Level', 'Name', 'Talent Group', 'Offering', 'Location', 'Current Pod Lead Partner', 'Actions'])
+        .enter()
+        .append('th')
+        .attr('class', 'col-header')
+        .text(d => d);
+
+    const partnerMap = new Map(allPartners.map(p => [p.id, p.name]));
+
+    filteredEmployees.forEach(member => {
+        const row = tbody.append('tr');
+
+        row.append('td').append('input')
+           .attr('type', 'checkbox')
+           .attr('class', 'employee-checkbox')
+           .datum(member)
+           .on('change', function() {
+                const checkedCount = container.selectAll('.employee-checkbox:checked').size();
+                bulkMoveButton.style('display', checkedCount > 0 ? 'inline-block' : 'none');
+           });
+
+        row.append('td').text(member.level);
+        row.append('td').text(member.name);
+        row.append('td').text(member.talent_group || 'N/A');
+        row.append('td').text(member['Operating Unit Name'] || 'N/A');
+        row.append('td').text(member['Location  Name'] || 'N/A');
+        
+        const podPartnerName = partnerMap.get(member.partner_relationship_id) || 'N/A';
+        row.append('td').text(podPartnerName);
+
+        row.append('td').append('button').text('Move').on('click', (event) => {
+            event.stopPropagation();
+            showMovePodModal([member]);
+        });
+    });
 }

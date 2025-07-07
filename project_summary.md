@@ -48,6 +48,7 @@ The web application consists of a main `index.html` file and a `js` directory co
         *   **Coaching Moves Log:** A log of all temporary "what-if" changes made to the coaching trees.
     *   **Partner Pods View:** This area focuses on the flat, non-hierarchical pod relationships. It contains:
         *   **Partner Pods:** A view that groups employees under their designated Pod Partner.
+        *   **All Employees:** A comprehensive list of all employees in the selected offering. This view includes the employee's current Pod Lead Partner and allows for filtering by location and talent group. It also supports bulk-moving employees to a new pod.
         *   **Pod Moves Log:** A log of all temporary changes made to pod assignments.
 
 *   **Visual Highlighting of Rules and Errors:** The application excels at visually representing the data quality issues and business rules:

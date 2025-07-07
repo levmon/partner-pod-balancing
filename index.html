@@ -372,6 +372,7 @@
     <div id="podsView" class="view-content">
         <div class="tab-buttons">
             <button class="tab-button active" onclick="openTab(event, 'partnerPodsTab')">Partner Pods</button>
+            <button class="tab-button" onclick="openTab(event, 'allEmployeesTab')">All Employees</button>
             <button class="tab-button" onclick="openTab(event, 'podMovesLogTab')">Pod Moves Log</button>
         </div>
 
@@ -379,6 +380,20 @@
             <h2 id="pods-title">Partner Pods</h2>
             <p id="pods-description">This view shows non-hierarchical groupings of employees based on their direct relationship to a Partner.</p>
             <div id="pods-container"></div>
+        </div>
+
+        <div id="allEmployeesTab" class="tab-content">
+            <h2>All Employees in Offering</h2>
+            <p>This section lists all employees in the selected offering, allowing for filtering and bulk actions.</p>
+            <div class="controls">
+                <label for="location-filter">Filter by Location:</label>
+                <select id="location-filter"></select>
+                <label for="talent-group-filter">Filter by Talent Group:</label>
+                <select id="talent-group-filter"></select>
+                <button id="filter-employees-button">Apply Filters</button>
+                <button id="clear-filters-button">Clear Filters</button>
+            </div>
+            <div id="all-employees-container"></div>
         </div>
 
         <div id="podMovesLogTab" class="tab-content">
