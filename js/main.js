@@ -69,6 +69,8 @@ d3.json("forest.json?" + new Date().getTime()).then(async function(data) {
     podMoveCancelButton.onclick = () => { movePodMemberModal.style.display = "none"; };
     podMoveConfirmButton.onclick = confirmPodMove;
     document.getElementById('clear-pod-moves-button').onclick = clearPodMoves;
+    document.getElementById('download-coaching-moves-csv').onclick = () => downloadCSV(changeLog, 'coaching_moves.csv');
+    document.getElementById('download-pod-moves-csv').onclick = () => downloadCSV(podChangeLog, 'pod_moves.csv');
 
     contextMenuMoveItem.onclick = function() {
         if (contextMenuTargetNode) {
