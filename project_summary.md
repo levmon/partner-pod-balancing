@@ -32,7 +32,12 @@ The Python script is the foundation of the project. It reads an Excel file, clea
 
 ## 2. Interactive Visualization (`index.html`)
 
-The `index.html` file is a client-side web application that uses the **D3.js library** to create rich, interactive visualizations from the `forest.json` data.
+The web application consists of a main `index.html` file and a `js` directory containing the application's JavaScript logic. The application uses the **D3.js library** to create rich, interactive visualizations from the `forest.json` data. The JavaScript is organized into the following files:
+
+*   **`js/main.js`**: The entry point for the application, responsible for initializing the application and setting up event listeners.
+*   **`js/data.js`**: Handles all data-related operations, including loading `forest.json`, managing change logs, and applying logged changes.
+*   **`js/ui.js`**: Contains all functions for rendering and interacting with UI components, such as tables, modals, and selectors.
+*   **`js/d3-tree.js`**: Encapsulates all logic specific to the D3.js coaching tree visualization.
 
 **Key Features:**
 
