@@ -17,18 +17,47 @@ function setupSvg() {
     });
 }
 
+function switchView(viewName) {
+    // Hide all main view content
+    const viewContents = document.querySelectorAll('.view-content');
+    viewContents.forEach(vc => vc.style.display = 'none');
+
+    // Deactivate all main nav buttons
+    const mainNavButtons = document.querySelectorAll('.main-nav-button');
+    mainNavButtons.forEach(btn => btn.classList.remove('active'));
+
+    // Show the selected view content
+    document.getElementById(viewName).style.display = 'block';
+
+    // Activate the selected main nav button
+    document.getElementById(viewName.replace('View', '-view-btn')).classList.add('active');
+}
+
 function openTab(evt, tabName) {
-    let i, tabcontent, tablinks;
-    tabcontent = document.getElementsByClassName("tab-content");
-    for (i = 0; i < tabcontent.length; i++) {
+    // Find the parent view-content container
+    let parentView = evt.currentTarget.closest('.view-content');
+    if (!parentView) {
+        console.error("Tab button is not inside a .view-content container.");
+        return;
+    }
+
+    // Get all tab content and buttons within the specific view
+    const tabcontent = parentView.querySelectorAll(".tab-content");
+    const tablinks = parentView.querySelectorAll(".tab-button");
+
+    // Hide all tab content within this view
+    for (let i = 0; i < tabcontent.length; i++) {
         tabcontent[i].style.display = "none";
     }
-    tablinks = document.getElementsByClassName("tab-button");
-    for (i = 0; i < tablinks.length; i++) {
-        tablinks[i].className = tablinks[i].className.replace(" active", "");
+
+    // Deactivate all tab buttons within this view
+    for (let i = 0; i < tablinks.length; i++) {
+        tablinks[i].classList.remove("active");
     }
+
+    // Show the selected tab content and activate its button
     document.getElementById(tabName).style.display = "block";
-    evt.currentTarget.className += " active";
+    evt.currentTarget.classList.add("active");
 }
 
 function renderOrphanedReportTable(orphanedData) {

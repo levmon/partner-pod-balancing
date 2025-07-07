@@ -84,12 +84,33 @@
         .controls label, .controls select, .controls button { 
             margin-right: 10px; 
         }
-        /* Tab styling */
+        /* Main view navigation styling */
+        .main-nav {
+            display: flex;
+            background-color: #333;
+            margin-bottom: 10px;
+        }
+        .main-nav-button {
+            background-color: #333;
+            color: white;
+            padding: 14px 20px;
+            border: none;
+            outline: none;
+            cursor: pointer;
+            font-size: 18px;
+            transition: background-color 0.3s;
+        }
+        .main-nav-button:hover {
+            background-color: #555;
+        }
+        .main-nav-button.active {
+            background-color: steelblue;
+        }
+        .view-content {
+            display: none; /* Hide main views by default */
+        }
+        /* Sub-tab styling */
         .tab-buttons {
-            position: -webkit-sticky; /* For Safari */
-            position: sticky;
-            top: 0;
-            z-index: 100; /* Ensure it stays on top */
             overflow: hidden;
             border: 1px solid #ccc;
             background-color: #f1f1f1;
@@ -112,11 +133,10 @@
             background-color: #ccc;
         }
         .tab-content {
-            display: none; 
+            display: none;
             padding: 6px 12px;
-            border: 1px solid #ccc;
             border-top: none;
-            width: 100%; 
+            width: 100%;
             box-sizing: border-box;
         }
         #orphaned-table-container table {
@@ -279,89 +299,94 @@
     </style>
 </head>
 <body>
-    <h1>Coaching Forest</h1>
+    <h1>Partner Pod Balancing</h1>
 
-    <div class="tab-buttons">
-        <button class="tab-button active" onclick="openTab(event, 'partnerTreesTab')">Partner Trees</button>
-        <button class="tab-button" onclick="openTab(event, 'orphanedTnTTab')" id="orphanedTabButton">Orphaned</button>
-        <button class="tab-button" onclick="openTab(event, 'partnerPodsTab')">Partner Pods</button>
-        <button class="tab-button" onclick="openTab(event, 'podMovesLogTab')">Pod Moves Log</button>
-        <button class="tab-button" onclick="openTab(event, 'tempMovesLogTab')" id="tempMovesLogTabButton">Temporary Moves Log</button>
-    </div>
-
-    <div class="controls" style="margin-top: 10px;"> 
+    <div class="controls">
         <label for="ou-selector">Select Operating Unit:</label>
         <select id="ou-selector"></select>
     </div>
 
-    <!-- Tab content -->
-    <div id="partnerTreesTab" class="tab-content" style="display:block;">
-        <div class="controls">
-            <label for="tree-selector">Select Partner Tree:</label>
-            <select id="tree-selector"></select>
-            <button id="reset-zoom">Reset Zoom/Pan</button>
+    <div class="main-nav">
+        <button id="coaching-view-btn" class="main-nav-button active" onclick="switchView('coachingView')">Coaching Forest</button>
+        <button id="pods-view-btn" class="main-nav-button" onclick="switchView('podsView')">Partner Pods</button>
+    </div>
+
+    <!-- Coaching View Content -->
+    <div id="coachingView" class="view-content" style="display: block;">
+        <div class="tab-buttons">
+            <button class="tab-button active" onclick="openTab(event, 'partnerTreesTab')">Partner Trees</button>
+            <button class="tab-button" onclick="openTab(event, 'orphanedTnTTab')" id="orphanedTabButton">Orphaned</button>
+            <button class="tab-button" onclick="openTab(event, 'tempMovesLogTab')" id="tempMovesLogTabButton">Coaching Moves Log</button>
         </div>
-        <div id="chart-container" class="tree-container">
-            <svg id="coaching-tree-svg"></svg>
+
+        <div id="partnerTreesTab" class="tab-content" style="display:block;">
+            <div class="controls">
+                <label for="tree-selector">Select Partner Tree:</label>
+                <select id="tree-selector"></select>
+                <button id="reset-zoom">Reset Zoom/Pan</button>
+            </div>
+            <div id="chart-container" class="tree-container">
+                <svg id="coaching-tree-svg"></svg>
+            </div>
+        </div>
+
+        <div id="orphanedTnTTab" class="tab-content">
+            <h2 id="orphaned-title">Orphaned Employees Report</h2>
+            <p id="orphaned-description">This report shows employees from the selected Operating Unit who cannot be traced to a valid Partner in the coaching hierarchy.</p>
+            <div id="orphaned-table-container"></div>
+        </div>
+
+        <div id="tempMovesLogTab" class="tab-content">
+            <h2>Coaching Moves Log</h2>
+            <p><em>These changes are temporary and reflect 'what-if' scenarios. They will be reset when the underlying data is refreshed.</em></p>
+            <button id="clear-temp-moves-button" style="margin-bottom: 15px;">Clear All Coaching Moves</button>
+            <div id="temp-moves-log-table-container">
+                <table id="temp-moves-log-table" style="width:100%; border-collapse: collapse;">
+                    <thead>
+                        <tr>
+                            <th>Moved Employee</th>
+                            <th>Moved Employee ID</th>
+                            <th>Original Coach</th>
+                            <th>New Coach</th>
+                            <th>Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
         </div>
     </div>
 
-    <div id="orphanedTnTTab" class="tab-content" style="display:none;">
-        <h2 id="orphaned-title">Orphaned Employees Report</h2>
-        <p id="orphaned-description">This report shows employees from the selected Operating Unit (if applicable for this report type) who meet specific criteria (e.g., non-Partners whose coach is outside their unit, invalid, or missing).</p>
-        <div id="orphaned-table-container">
-            <!-- Table will be generated here by D3 -->
+    <!-- Pods View Content -->
+    <div id="podsView" class="view-content">
+        <div class="tab-buttons">
+            <button class="tab-button active" onclick="openTab(event, 'partnerPodsTab')">Partner Pods</button>
+            <button class="tab-button" onclick="openTab(event, 'podMovesLogTab')">Pod Moves Log</button>
         </div>
-    </div>
 
-    <div id="tempMovesLogTab" class="tab-content" style="display:none;">
-        <h2>Temporary Moves Log</h2>
-        <p><em>These changes are temporary and reflect 'what-if' scenarios. They will be reset when the underlying data is refreshed (i.e., when <code>build_forest.py</code> is re-run). To make permanent organizational changes, please update the source Excel file.</em></p>
-        <button id="clear-temp-moves-button" style="margin-bottom: 15px;">Clear All Temporary Moves</button>
-        <div id="temp-moves-log-table-container">
-            <table id="temp-moves-log-table" style="width:100%; border-collapse: collapse;">
-                <thead>
-                    <tr>
-                        <th>Moved Employee</th>
-                        <th>Moved Employee ID</th>
-                        <th>Original Coach</th>
-                        <th>New Coach</th>
-                        <th>Timestamp</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <!-- Log entries will be populated here by JavaScript -->
-                </tbody>
-            </table>
+        <div id="partnerPodsTab" class="tab-content" style="display:block;">
+            <h2 id="pods-title">Partner Pods</h2>
+            <p id="pods-description">This view shows non-hierarchical groupings of employees based on their direct relationship to a Partner.</p>
+            <div id="pods-container"></div>
         </div>
-    </div>
 
-    <div id="partnerPodsTab" class="tab-content" style="display:none;">
-        <h2 id="pods-title">Partner Pods</h2>
-        <p id="pods-description">This view shows non-hierarchical groupings of employees based on their direct relationship to a Partner.</p>
-        <div id="pods-container">
-            <!-- Pods will be generated here by D3 -->
-        </div>
-    </div>
-
-    <div id="podMovesLogTab" class="tab-content" style="display:none;">
-        <h2>Partner Pod Moves Log</h2>
-        <p><em>These changes are temporary and reflect 'what-if' scenarios for pod relationships.</em></p>
-        <button id="clear-pod-moves-button" style="margin-bottom: 15px;">Clear All Pod Moves</button>
-        <div id="pod-moves-log-table-container">
-            <table id="pod-moves-log-table" style="width:100%; border-collapse: collapse;">
-                <thead>
-                    <tr>
-                        <th>Moved Employee</th>
-                        <th>Original Pod Partner</th>
-                        <th>New Pod Partner</th>
-                        <th>Timestamp</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <!-- Log entries will be populated here by JavaScript -->
-                </tbody>
-            </table>
+        <div id="podMovesLogTab" class="tab-content">
+            <h2>Partner Pod Moves Log</h2>
+            <p><em>These changes are temporary and reflect 'what-if' scenarios for pod relationships.</em></p>
+            <button id="clear-pod-moves-button" style="margin-bottom: 15px;">Clear All Pod Moves</button>
+            <div id="pod-moves-log-table-container">
+                <table id="pod-moves-log-table" style="width:100%; border-collapse: collapse;">
+                    <thead>
+                        <tr>
+                            <th>Moved Employee</th>
+                            <th>Original Pod Partner</th>
+                            <th>New Pod Partner</th>
+                            <th>Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
         </div>
     </div>
 
