@@ -884,22 +884,47 @@
 
             if (errors.length > 0) {
                 const errorContainer = container.append('div').attr('class', 'pod-container');
-                errorContainer.append('div')
+                const errorHeader = errorContainer.append('div')
                     .attr('class', 'pod-header')
-                    .text(`Pod Relationship Errors in ${currentSelectedOU} (${errors.length})`)
                     .on('click', function() {
                         const content = d3.select(this.parentNode).select('.pod-content');
                         const isHidden = content.style('display') === 'none';
                         content.style('display', isHidden ? 'block' : 'none');
                     });
 
+                errorHeader.append('span')
+                    .text(`Pod Relationship Errors in ${currentSelectedOU} (${errors.length})`);
+
+                const bulkMoveButton = errorHeader.append('button')
+                    .attr('class', 'bulk-move-button')
+                    .text('Bulk Move Selected')
+                    .on('click', function(event) {
+                        event.stopPropagation();
+                        const selectedEmployees = [];
+                        errorContainer.selectAll('.pod-member-checkbox:checked').each(function(d) {
+                            selectedEmployees.push(d);
+                        });
+                        if (selectedEmployees.length > 0) {
+                            showMovePodModal(selectedEmployees);
+                        } else {
+                            alert("Please select at least one employee to move.");
+                        }
+                    });
+
                 const errorContent = errorContainer.append('div').attr('class', 'pod-content');
                 const errorTable = errorContent.append('table').attr('class', 'pod-table');
                 
-                errorTable.append('thead').append('tr')
-                    .selectAll('th')
+                const errorThead = errorTable.append('thead').append('tr');
+                errorThead.append('th').append('input')
+                    .attr('type', 'checkbox')
+                    .on('click', function() {
+                        const isChecked = d3.select(this).property('checked');
+                        errorContainer.selectAll('.pod-member-checkbox').property('checked', isChecked).dispatch('change');
+                    });
+
+                errorThead.selectAll('th.col-header')
                     .data(['Name', 'Level', 'Talent Group', 'Offering', 'Location', 'Reason', 'Actions'])
-                    .enter().append('th').text(d => d);
+                    .enter().append('th').attr('class', 'col-header').text(d => d);
 
                 const errorTbody = errorTable.append('tbody');
                 errors.forEach(emp => {
@@ -913,6 +938,16 @@
                         reason = `Partner (${partnerName}) is in different Offering (${partnerOffering})`;
                     }
                     const row = errorTbody.append('tr');
+
+                    row.append('td').append('input')
+                        .attr('type', 'checkbox')
+                        .attr('class', 'pod-member-checkbox')
+                        .datum(emp)
+                        .on('change', function() {
+                            const checkedCount = errorContainer.selectAll('.pod-member-checkbox:checked').size();
+                            bulkMoveButton.style('display', checkedCount > 0 ? 'inline-block' : 'none');
+                        });
+
                     row.append('td').text(emp.name);
                     row.append('td').text(emp.level);
                     row.append('td').text(emp.talent_group || 'N/A');
@@ -1389,6 +1424,7 @@ Direct Reports: ${d.direct_coachee_count !== undefined ? d.direct_coachee_count 
                     employee.partner_relationship_id = log.new_partner_id;
                     employee.partner_relationship_name = log.new_partner_name;
                     employee.is_pod_relationship_valid = true;
+                    employee.pod_relationship_status = 'valid';
                 }
             });
         }
