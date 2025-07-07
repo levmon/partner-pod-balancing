@@ -41,11 +41,14 @@ The web application consists of a main `index.html` file and a `js` directory co
 
 **Key Features:**
 
-*   **Tabbed Interface:** The application is organized into several tabs for different views of the data:
-    *   **Partner Trees:** This is the primary view, showing the coaching hierarchies as interactive, collapsible tree diagrams. You can select an Operating Unit and then choose a specific Partner's tree to view.
-    *   **Orphaned:** This tab displays a simple table of all orphaned employees for the selected Operating Unit, along with the specific reason they are considered orphaned, as determined by the Python script.
-    *   **Partner Pods:** This view visualizes the flat, non-hierarchical "Partner Pod" relationships. It groups employees under their designated Pod Partner, which is separate from the coaching hierarchy.
-    *   **Moves Logs:** Two tabs log the "what-if" changes a user makes to either the coaching tree or the partner pods. These changes are stored in the browser's local storage and are not permanent.
+*   **Two-Tiered Navigation:** To provide a clearer user experience, the application is split into two main views, each with its own set of tabs:
+    *   **Coaching Forest View:** This is the primary area for analyzing the hierarchical coaching structure. It contains the following tabs:
+        *   **Partner Trees:** The main interactive, collapsible tree diagrams for each Partner.
+        *   **Orphaned:** A report listing all employees who cannot be traced to a valid Partner.
+        *   **Coaching Moves Log:** A log of all temporary "what-if" changes made to the coaching trees.
+    *   **Partner Pods View:** This area focuses on the flat, non-hierarchical pod relationships. It contains:
+        *   **Partner Pods:** A view that groups employees under their designated Pod Partner.
+        *   **Pod Moves Log:** A log of all temporary changes made to pod assignments.
 
 *   **Visual Highlighting of Rules and Errors:** The application excels at visually representing the data quality issues and business rules:
     *   **Coaching Tree Mismatches:** In the tree view, nodes are colored differently if an employee is in a different location or a different operating unit from the Partner at the top of the tree.
