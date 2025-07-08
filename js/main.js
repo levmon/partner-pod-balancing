@@ -71,6 +71,7 @@ d3.json("forest.json?" + new Date().getTime()).then(async function(data) {
     document.getElementById('clear-pod-moves-button').onclick = clearPodMoves;
     document.getElementById('download-coaching-moves-csv').onclick = () => downloadCSV(changeLog, 'coaching_moves.csv');
     document.getElementById('download-pod-moves-csv').onclick = () => downloadCSV(Object.values(podChangeLog), 'pod_moves.csv');
+    document.getElementById('download-all-employees-csv').onclick = downloadAllEmployeesCSV;
 
     contextMenuMoveItem.onclick = function() {
         if (contextMenuTargetNode) {

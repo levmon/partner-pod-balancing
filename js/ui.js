@@ -775,6 +775,62 @@ function populateFilter(selectorId, values, defaultOptionText) {
         selector.append("option").attr("value", value).text(value);
     });
 }
+function downloadAllEmployeesCSV() {
+    const allEmployees = getUniqueEmployees(); 
+    const allPartners = currentGlobalPartnerTrees.filter(p => p.level === PARTNER_LEVEL_VALUE);
+
+    const locationFilter = d3.select("#location-filter").property("value");
+    const talentGroupFilter = d3.select("#talent-group-filter").property("value");
+
+    let filteredEmployees = allEmployees.filter(emp => emp['Operating Unit Name'] === currentSelectedOU);
+
+    if (locationFilter && locationFilter !== 'all') {
+        filteredEmployees = filteredEmployees.filter(emp => emp['Location  Name'] === locationFilter);
+    }
+    if (talentGroupFilter && talentGroupFilter !== 'all') {
+        filteredEmployees = filteredEmployees.filter(emp => emp.talent_group === talentGroupFilter);
+    }
+
+    const headers = [
+        "Employee ID", "Name", "Level", "Location", "Talent Group", "Offering",
+        "Coach ID", "Coach Name",
+        "Coaching Tree Lead ID", "Coaching Tree Lead Name",
+        "Pod Lead ID", "Pod Lead Name"
+    ];
+
+    const data = filteredEmployees.map(emp => {
+        const coach = allEmployees.find(e => e.id === emp.coach_id);
+        const coachingTreeLead = allPartners.find(p => p.id === emp.coaching_tree_partner_id);
+        
+        const podMove = podChangeLog[emp.id];
+        let finalPodPartnerId;
+        if (podMove) {
+            finalPodPartnerId = podMove.new_partner_id;
+        } else {
+            finalPodPartnerId = emp.partner_relationship_id;
+        }
+        const finalPodPartner = allPartners.find(p => p.id === finalPodPartnerId);
+
+        return [
+            emp.id,
+            emp.name,
+            emp.level,
+            emp['Location  Name'] || 'N/A',
+            emp.talent_group || 'N/A',
+            emp['Operating Unit Name'] || 'N/A',
+            emp.coach_id || 'N/A',
+            coach ? coach.name : 'N/A',
+            emp.coaching_tree_partner_id || 'N/A',
+            coachingTreeLead ? coachingTreeLead.name : 'N/A',
+            finalPodPartnerId || 'N/A',
+            finalPodPartner ? finalPodPartner.name : 'N/A'
+        ];
+    });
+
+    const csvData = [headers, ...data];
+    const ouName = currentSelectedOU.replace(/[^a-z0-9]/gi, '_');
+    downloadCSV(csvData, `all_employees_${ouName}.csv`);
+}
 
 let allEmployeesSortKey = 'name';
 let allEmployeesSortAsc = true;
