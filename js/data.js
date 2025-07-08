@@ -40,11 +40,20 @@ function loadPodChangeLog() {
     const storedLog = localStorage.getItem(LOCAL_STORAGE_KEY_POD_MOVES);
     if (storedLog) {
         try {
-            podChangeLog = JSON.parse(storedLog);
-            if (!Array.isArray(podChangeLog)) podChangeLog = [];
+            const parsedLog = JSON.parse(storedLog);
+            // Migration check: If it's an array (old format), start fresh.
+            if (Array.isArray(parsedLog)) {
+                console.warn("Old pod change log format detected. Starting a new log.");
+                podChangeLog = {};
+            } else {
+                podChangeLog = parsedLog || {};
+            }
         } catch (e) {
-            podChangeLog = [];
+            console.error("Error parsing pod change log from localStorage:", e);
+            podChangeLog = {};
         }
+    } else {
+        podChangeLog = {};
     }
 }
 
@@ -54,13 +63,15 @@ function savePodChangeLog() {
 
 function applyPodLoggedChanges() {
     const allEmployees = getUniqueEmployees();
-    podChangeLog.forEach(log => {
+    Object.values(podChangeLog).forEach(log => {
         const employee = allEmployees.find(e => e.id === log.moved_employee_id);
         if (employee) {
             employee.partner_relationship_id = log.new_partner_id;
             employee.partner_relationship_name = log.new_partner_name;
             employee.is_pod_relationship_valid = true;
             employee.pod_relationship_status = 'valid';
+            // Add a flag to indicate the employee has been moved for UI rendering
+            employee.isMoved = true;
         }
     });
 }

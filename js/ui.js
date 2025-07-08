@@ -314,6 +314,9 @@ function renderPartnerPods(allEmployees, allPartners) {
                 row.append('td').text(member.level);
                 
                 let nameDisplay = member.name;
+                if (member.isMoved) {
+                    nameDisplay += ` <span class="move-action-icon" title="This employee has been temporarily moved.">🔄</span>`;
+                }
                 if (member.coaching_tree_partner_id && member.partner_relationship_id && member.coaching_tree_partner_id !== member.partner_relationship_id) {
                     nameDisplay += ` <span class="coaching-tree-mismatch" title="Coaching tree partner is different from pod partner.">🌳</span>`;
                 }
@@ -329,10 +332,23 @@ function renderPartnerPods(allEmployees, allPartners) {
                 }
 
                 row.append('td').text(memberLocation || 'N/A');
-                row.append('td').append('button').text('Move').on('click', (event) => {
+                
+                const actionsCell = row.append('td');
+
+                actionsCell.append('button').text('Move').on('click', (event) => {
                     event.stopPropagation();
                     showMovePodModal([member]); // Pass as an array for consistency
                 });
+
+                if (member.isMoved) {
+                    actionsCell.append('button')
+                        .text('Revert')
+                        .style('margin-left', '5px')
+                        .on('click', (event) => {
+                            event.stopPropagation();
+                            revertPodMove(member.id);
+                        });
+                }
 
                 nameCell.on("mouseover", function(event) {
                         showTooltip(event, member);
@@ -489,17 +505,14 @@ function showMovePodModal(employeesToMove) {
         const podId = emp.partner_relationship_id;
         return emp['Operating Unit Name'] === currentSelectedOU && emp.level !== PARTNER_LEVEL_VALUE && (podId ? !ouPartnerIds.has(podId) || !emp.is_pod_relationship_valid : true);
     });
-    const isUnassigned = unassignedList.some(e => e.id === firstEmployee.id);
-    
-    const employeeOU = firstEmployee['Operating Unit Name'];
     const employeeLocation = firstEmployee['Location  Name'];
 
-    const targetOU = isUnassigned ? employeeOU : currentSelectedOU;
+    // When moving from the "All Employees" or "Partner Pods" view, the target OU should always be the one selected in the main filter.
+    const targetOU = currentSelectedOU;
     
-    const eligiblePartners = currentGlobalPartnerTrees.filter(p => 
+    const eligiblePartners = currentGlobalPartnerTrees.filter(p =>
         p.level === PARTNER_LEVEL_VALUE &&
-        p['Operating Unit Name'] === targetOU &&
-        !employeesToMove.some(emp => emp.partner_relationship_id === p.id) // Ensure not moving to own pod
+        p['Operating Unit Name'] === targetOU
     );
 
     // Sort partners: same location first, then by name
@@ -531,70 +544,104 @@ function showMovePodModal(employeesToMove) {
 
 function confirmPodMove() {
     const newPartnerId = newPodPartnerSelector.value;
-    if (!currentEmployeeToMovePod || currentEmployeeToMovePod.length === 0 || !newPartnerId) {
-        alert("Please select employee(s) and a new partner.");
+    if (!currentEmployeeToMovePod || !newPartnerId) {
+        alert("Please select an employee and a new partner.");
         return;
     }
 
-    const newPartner = findNodeById(currentGlobalPartnerTrees, newPartnerId);
+    const newPartnerNode = findNodeById(currentGlobalPartnerTrees, newPartnerId);
+    if (!newPartnerNode) {
+        alert("Error: Could not find the new Pod Partner.");
+        return;
+    }
+
+    const allEmployeesFromSource = getUniqueEmployees();
 
     currentEmployeeToMovePod.forEach(employeeToMove => {
-        const originalPartnerId = employeeToMove.partner_relationship_id;
-        const originalPartner = originalPartnerId ? findNodeById(currentGlobalPartnerTrees, originalPartnerId) : null;
+        // If the employee is already in the log, we just update their final destination.
+        if (podChangeLog[employeeToMove.id]) {
+            podChangeLog[employeeToMove.id].new_partner_id = newPartnerId;
+            podChangeLog[employeeToMove.id].new_partner_name = newPartnerNode.name;
+            podChangeLog[employeeToMove.id].timestamp = new Date().toISOString();
+        } else {
+            // If it's a new move, we need to find their ORIGINAL partner from the source data.
+            const originalEmployeeState = allEmployeesFromSource.find(e => e.id === employeeToMove.id);
+            const originalPartnerId = originalEmployeeState ? originalEmployeeState.partner_relationship_id : null;
+            const originalPartner = originalPartnerId ? findNodeById(currentGlobalPartnerTrees, originalPartnerId) : null;
+            const originalPartnerName = originalPartner ? originalPartner.name : "N/A";
 
-        // Update data in memory
-        employeeToMove.partner_relationship_id = newPartner.id;
-        employeeToMove.partner_relationship_name = newPartner.name;
+            podChangeLog[employeeToMove.id] = {
+                moved_employee_id: employeeToMove.id,
+                moved_employee_name: employeeToMove.name,
+                original_partner_id: originalPartnerId,
+                original_partner_name: originalPartnerName,
+                new_partner_id: newPartnerId,
+                new_partner_name: newPartnerNode.name,
+                timestamp: new Date().toISOString()
+            };
+        }
+        
+        // Apply the change visually for immediate feedback
+        employeeToMove.partner_relationship_id = newPartnerId;
+        employeeToMove.partner_relationship_name = newPartnerNode.name;
         employeeToMove.is_pod_relationship_valid = true;
-        employeeToMove.pod_relationship_status = 'valid'; // Explicitly mark as valid
-
-        // Log the change
-        podChangeLog.push({
-            moved_employee_id: employeeToMove.id,
-            moved_employee_name: employeeToMove.name,
-            original_partner_id: originalPartnerId,
-            original_partner_name: originalPartner ? originalPartner.name : 'N/A',
-            new_partner_id: newPartner.id,
-            new_partner_name: newPartner.name,
-            timestamp: new Date().toISOString()
-        });
+        employeeToMove.pod_relationship_status = 'valid';
+        employeeToMove.isMoved = true;
     });
 
     savePodChangeLog();
     renderPodChangeLogTable();
-    
-    // Re-render the pods view
-    const allEmployees = getUniqueEmployees();
+    const allEmployees = getUniqueEmployees(); // Re-fetch to ensure current state
     renderPartnerPods(allEmployees, currentGlobalPartnerTrees);
-    renderAllEmployeesList(allEmployees, currentGlobalPartnerTrees); // Refresh the "All Employees" list
+    renderAllEmployeesList(allEmployees, currentGlobalPartnerTrees);
 
     movePodMemberModal.style.display = "none";
+    currentEmployeeToMovePod = null;
 }
 
 function renderPodChangeLogTable() {
     const tableBody = d3.select("#pod-moves-log-table tbody");
     tableBody.selectAll("*").remove();
-    if (podChangeLog.length === 0) {
+
+    const logEntries = Object.values(podChangeLog);
+
+    if (logEntries.length === 0) {
         tableBody.append('tr').append('td')
-            .attr('colspan', 4)
+            .attr('colspan', 5) // Now 5 columns
             .style('text-align', 'center')
             .text('No pod moves recorded.');
         return;
     }
-    podChangeLog.forEach(log => {
-        const row = tableBody.append('tr');
-        row.append('td').text(log.moved_employee_name);
-        row.append('td').text(log.original_partner_name);
-        row.append('td').text(log.new_partner_name);
-        row.append('td').text(new Date(log.timestamp).toLocaleString());
+
+    const rows = tableBody.selectAll("tr")
+        .data(logEntries)
+        .enter()
+        .append("tr");
+
+    rows.append("td").text(d => d.moved_employee_name);
+    rows.append("td").text(d => d.original_partner_name);
+    rows.append("td").text(d => d.new_partner_name);
+    rows.append("td").text(d => new Date(d.timestamp).toLocaleString());
+    rows.append("td").append('button').text('Revert').on('click', (event, d) => {
+        event.stopPropagation();
+        revertPodMove(d.moved_employee_id);
     });
 }
 
 function clearPodMoves() {
     if (confirm("Are you sure you want to clear all temporary pod moves?")) {
-        podChangeLog = [];
+        podChangeLog = {};
         savePodChangeLog();
         window.location.reload();
+    }
+}
+
+function revertPodMove(employeeId) {
+    if (podChangeLog[employeeId]) {
+        delete podChangeLog[employeeId];
+        savePodChangeLog();
+        // A full reload is the simplest way to ensure all state is correct
+        location.reload();
     }
 }
 
@@ -729,6 +776,9 @@ function populateFilter(selectorId, values, defaultOptionText) {
     });
 }
 
+let allEmployeesSortKey = 'name';
+let allEmployeesSortAsc = true;
+
 function renderAllEmployeesList(allEmployees, allPartners) {
     const container = d3.select("#all-employees-container");
     container.selectAll("*").remove();
@@ -749,6 +799,18 @@ function renderAllEmployeesList(allEmployees, allPartners) {
     if (talentGroupFilter !== 'all') {
         filteredEmployees = filteredEmployees.filter(emp => emp.talent_group === talentGroupFilter);
     }
+
+    // Sorting logic
+    filteredEmployees.sort((a, b) => {
+        let valA = a[allEmployeesSortKey] || '';
+        let valB = b[allEmployeesSortKey] || '';
+        if (typeof valA === 'string') valA = valA.toLowerCase();
+        if (typeof valB === 'string') valB = valB.toLowerCase();
+
+        if (valA < valB) return allEmployeesSortAsc ? -1 : 1;
+        if (valA > valB) return allEmployeesSortAsc ? 1 : -1;
+        return 0;
+    });
 
     const bulkMoveButton = container.append('button')
         .attr('class', 'bulk-move-button')
@@ -772,7 +834,7 @@ function renderAllEmployeesList(allEmployees, allPartners) {
         return;
     }
 
-    const table = container.append('table').attr('class', 'pod-table'); // Re-use pod-table styles
+    const table = container.append('table').attr('class', 'pod-table');
     const thead = table.append('thead');
     const tbody = table.append('tbody');
 
@@ -784,12 +846,39 @@ function renderAllEmployeesList(allEmployees, allPartners) {
             container.selectAll('.employee-checkbox').property('checked', isChecked).dispatch('change');
         });
 
+    const columns = [
+        { key: 'name', label: 'Name' },
+        { key: 'level', label: 'Level' },
+        { key: 'talent_group', label: 'Talent Group' },
+        { key: 'Location  Name', label: 'Location' },
+        { key: 'partner_relationship_name', label: 'Pod Lead Partner' },
+        { key: 'coaching_tree_partner_name', label: 'Coaching Tree Partner' }
+    ];
+
     headerRow.selectAll('th.col-header')
-        .data(['Level', 'Name', 'Talent Group', 'Offering', 'Location', 'Current Pod Lead Partner', 'Actions'])
+        .data(columns)
         .enter()
         .append('th')
         .attr('class', 'col-header')
-        .text(d => d);
+        .style('cursor', 'pointer')
+        .on('click', (event, d) => {
+            if (allEmployeesSortKey === d.key) {
+                allEmployeesSortAsc = !allEmployeesSortAsc;
+            } else {
+                allEmployeesSortKey = d.key;
+                allEmployeesSortAsc = true;
+            }
+            renderAllEmployeesList(allEmployees, allPartners);
+        })
+        .html(d => {
+            let sortIndicator = '';
+            if (d.key === allEmployeesSortKey) {
+                sortIndicator = allEmployeesSortAsc ? ' &#9650;' : ' &#9660;';
+            }
+            return d.label + sortIndicator;
+        });
+    
+    headerRow.append('th').text('Actions'); // Actions header
 
     const partnerMap = new Map(allPartners.map(p => [p.id, p.name]));
 
@@ -805,14 +894,9 @@ function renderAllEmployeesList(allEmployees, allPartners) {
                 bulkMoveButton.style('display', checkedCount > 0 ? 'inline-block' : 'none');
            });
 
-        row.append('td').text(member.level);
-        row.append('td').text(member.name);
-        row.append('td').text(member.talent_group || 'N/A');
-        row.append('td').text(member['Operating Unit Name'] || 'N/A');
-        row.append('td').text(member['Location  Name'] || 'N/A');
-        
-        const podPartnerName = partnerMap.get(member.partner_relationship_id) || 'N/A';
-        row.append('td').text(podPartnerName);
+        columns.forEach(col => {
+            row.append('td').text(member[col.key] || 'N/A');
+        });
 
         row.append('td').append('button').text('Move').on('click', (event) => {
             event.stopPropagation();
